@@ -1,0 +1,14 @@
+services:
+  tarantool:
+    image: tarantool/tarantool:latest
+    container_name: vk_tarantool
+    ports:
+      - "3301:3301"
+    restart: on-failure
+#    environment:
+#      TARANTOOL_INSTANCE_NAME: "instance-001"
+#      TARANTOOL_REPLICASET_NAME: "replicaset-001"
+    volumes:
+      - ./init.lua:/opt/tarantool/init.lua:ro
+    command: >
+      sh -c "tarantool -e 'dofile(\"/opt/tarantool/init.lua\")' -i"

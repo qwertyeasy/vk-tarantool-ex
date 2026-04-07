@@ -1,0 +1,153 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.2'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.google.protobuf' version '0.9.4'
+    id 'jacoco'
+}
+
+group = 'com.vk.tarantool'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+ext {
+    springCloudVersion = "2025.0.0"
+    mapstructVersion = '1.6.3'
+    springDocVersion = '2.8.13'
+    springGrpcVersion = '0.11.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // gRPC
+    implementation 'io.grpc:grpc-services'
+    implementation 'org.springframework.grpc:spring-grpc-spring-boot-starter'
+
+    // Tarantool
+    implementation("io.tarantool:tarantool-client:1.5.0")
+    implementation("io.tarantool:tarantool-spring-data-34:1.5.0")
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Cloud
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Tests
+    testImplementation("io.tarantool:testcontainers-java-tarantool:v1.5.0")
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.grpc:spring-grpc-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation("io.grpc:grpc-testing:1.80.0")
+    testImplementation("io.grpc:grpc-inprocess:1.80.0")
+}
+
+configurations.all {
+    resolutionStrategy {
+        eachDependency { details ->
+            if (details.requested.group == 'io.netty') {
+                details.useVersion '4.2.12.Final'
+            }
+        }
+        force 'io.netty:netty-common:4.2.12.Final'
+        force 'io.netty:netty-buffer:4.2.12.Final'
+        force 'io.netty:netty-transport:4.2.12.Final'
+        force 'io.netty:netty-codec:4.2.12.Final'
+        force 'io.netty:netty-handler:4.2.12.Final'
+        force 'io.netty:netty-codec-http:4.2.12.Final'
+        force 'io.netty:netty-codec-http2:4.2.12.Final'
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.grpc:spring-grpc-dependencies:${springGrpcVersion}"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+bootJar {
+    archiveFileName = "tarantool-grpc-service.jar"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs 'build/generated/source/proto/main/grpc'
+            srcDirs 'build/generated/source/proto/main/java'
+        }
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc'
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option '@generated=omit'
+            }
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs "-Xshare:off"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    classDirectories.setFrom(
+            files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        '**/grpc/**',
+                        '**/*Application*',
+                        '**/repository/**',
+                        '**/config/**',
+                        '**/kafka/**'
+                ])
+            })
+    )
+}
+
+jacocoTestCoverageVerification {
+    dependsOn(jacocoTestReport)
+
+    violationRules {
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.7
+            }
+        }
+
+        classDirectories.setFrom(jacocoTestReport.classDirectories)
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
+test.finalizedBy jacocoTestReport

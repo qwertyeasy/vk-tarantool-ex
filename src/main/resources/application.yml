@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: tarantool-grpc-service
+  grpc:
+    server:
+      port: ${GRPC_PORT:9090}
+      keep-alive:
+        time: 5m
+        timeout: 20s
+        permit-time: 5s
+        max-idle: 1h
+        max-age: 24h
+        max-age-grace: 5m
+        permit-without-calls: false
+  data:
+    tarantool:
+      host: ${TARANTOOL_HOST:localhost}
+      port: ${TARANTOOL_PORT:3301}
+      user-name: ${TARANTOOL_USERNAME:spider}
+      password: ${TARANTOOL_PASSWORD:man}
+#      balancer-mode: distributing_round_robin
+#      connect-timeout: 5000
+#      reconnect-after: 1000
+#      connection-groups:
+#        - auth-type: pap_sha256
+#          host: localhost
+#          port: 3301
+#          user-name: "user"
+#          password: secret
+#          connection-group-size: 4
+#          tag: first-router
+#      heartbeat:
+#        death-threshold: 4
+#        invalidation-threshold: 2
+#        ping-interval: 56
+#        window-size: 12
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
